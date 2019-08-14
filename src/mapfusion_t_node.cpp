@@ -1,6 +1,4 @@
 #include "mapfusion_t/mapfusion_t_node.h"
-// lidar_pointer = boost::make_shared<sensor_msgs::LaserScan>();
-// ts_pointer = boost::make_shared<sensor_msgs::LaserScan>();
 
 MapFusion::MapFusion ()
 {
@@ -28,8 +26,7 @@ void MapFusion::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 {
 	//merged_ranges = boost::make_shared<sensor_msgs::LaserScan>();  
 	//scan is a pointer to  object sensor messege
-	size_lidar = scan->ranges.size(); //361 data for lidar 0-360
-	total_size += size_lidar;
+
 	//ROS_INFO("[lidar: %d]", size_lidar);
 
 //	merged_Laser.header = scan->header;
@@ -41,7 +38,9 @@ void MapFusion::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 //	merged_ranges->header.frame_id = "merged_ranges";
 //	merged_ranges->angle_min = scan-> angle_min;
 //	merged_ranges-> angle_max = scan-> angle_max;
-	
+	  
+	size_lidar = scan->ranges.size(); //361 data for lidar 0-360
+	total_size += size_lidar;
 	merged_Laser.header = scan->header;
 	merged_Laser.range_min = scan->range_min;
 	merged_Laser.range_max = scan->range_max;
@@ -56,7 +55,10 @@ void MapFusion::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 
 	
 }
-
+/**
+ *Callback function for Ultrasound messages
+ *  
+ */
 void MapFusion::scanCallback2(const sensor_msgs::LaserScan::ConstPtr& ts_scan)
 {
 	  r = 0;
@@ -69,7 +71,10 @@ void MapFusion::scanCallback2(const sensor_msgs::LaserScan::ConstPtr& ts_scan)
 	  memcpy(&merged_Laser.ranges[size_lidar], &ts_scan->ranges[r], size_ts*sizeof(float)); 
 	  
 }
-
+/**
+ *Publishing merged laser scanner
+ *  
+ */
 void MapFusion::mergelaser()
 {
 	 ROS_INFO("[lidar:%d ts: %d total: %d]", this->size_lidar,size_ts,total_size);
@@ -88,15 +93,15 @@ int main(int argc, char **argv)
 	   * part of the ROS system.
 	   */
 
-	  ros::init(argc, argv, "mapFusion");
+	  ros::init(argc, argv, "mapFusion"); //name of the node 
 
-	  MapFusion mf_object;
+	  MapFusion mf_object; // create fushion object
 	  
 	  ros::Rate r(10); // 10 hz
 	  while (ros::ok())
 	  {	 
 		    ros::spinOnce(); //execute all the callbacks
-		    mf_object.mergelaser();
+		    mf_object.mergelaser(); // publish the merge laser
 		    r.sleep();
 	  }
 	
