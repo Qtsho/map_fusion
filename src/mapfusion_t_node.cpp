@@ -1,95 +1,105 @@
 #include "mapfusion_t/mapfusion_t_node.h"
+// lidar_pointer = boost::make_shared<sensor_msgs::LaserScan>();
+// ts_pointer = boost::make_shared<sensor_msgs::LaserScan>();
 
-/*
-This node to subcribe the laser scan(/laser_scan), the Ultrasound scan(/us_scan) without the z axis and merge 2 scan together and publish (/scan)
-
-mapping algorithm will subcibe to /scan for making a map without knowing that the scan comes from 2 different source. 
-*/
-
-
- //Default Constructor
-MapFusion::MapFusion()
+MapFusion::MapFusion ()
 {
- //ros::init (argc, argv, "scan_listener")
- ros::NodeHandle n; //ROS node handle
- ros::Subscriber sub_laser = n.subscribe ("laser_scan",1000, mergingScanner); // subcribe laserscan
- ros::Subscriber sub_pcl  = n.subscribe ("us_scan",1000) ;// subcribe pcl scan
- scan_pub  = n.advertise<sensor_msgs::LaserScan>("scan",50); // Laserscan publisher
-
+	  sub = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1,
+		  &MapFusion::scanCallback, this);
+	  
+	  sub_ts = nh.subscribe<sensor_msgs::LaserScan>("/scan_ts", 1, 
+		  &MapFusion::scanCallback2, this);
+	  scan_pub = nh.advertise<sensor_msgs::LaserScan>("/merged_scan", 10);
 }
 
-
-/*Call back whenever a new message arrives*/
-void MapFusion::publishingScan()
+void MapFusion::setScan_pub(ros::Publisher scan_pub)
 {
-    int count = 0;
-    num_readings = 0; //figure out what is this number
-    laser_frequency = 40; //figure out what is this number
-    double ranges[num_readings];
-    double intensities[num_readings]; 
-       //generate some fake data for our laser scan 
-    //(this would be the result after the MergingScanner() 
-    for(unsigned int i = 0; i < num_readings; ++i){
-      ranges[i] = count;
-      intensities[i] = 100 + count;
-    }
-
-    // initialize the laser data
-    sensor_msgs::LaserScan scan;
-    scan.header.stamp = ros::Time::now();
-    scan.header.frame_id ="merged_laser_frame";
-    scan.angle_min = -1.57;
-    scan.angle_max = 1.57;
-    scan.angle_increment = 3.14 / num_readings;
-    scan.time_increment = (1 / laser_frequency) / (num_readings);
-    scan.range_min = 0.0;
-    scan.range_max = 100.0;
-    scan.ranges.resize(num_readings);
-    scan.intensities.resize(num_readings);
-    for(unsigned int i = 0; i < num_readings; ++i){
-      scan.ranges[i] = ranges[i];
-      scan.intensities[i] = intensities[i];
-    }
-
-    scan_pub.publish(scan);
-    ++count;
-    
-
+	  this->scan_pub = scan_pub;
 }
-void MapFusion::mergingScanner()//onst sensor_msgs::LaserScan::ConstPtr& scan_in) 
+
+ros::Publisher MapFusion::getScan_pub() const
 {
-
-  /*
-  Algorithm goes here
-  #TODO: read 2 scan and merge it together to the messege scan
-  */
-
-  num_readings+=1; // add the point to messege
-  //ROS_INFO();
-
-  //ROS_INFO("I heard: [%s]", msg->data.c_str());
+	  return scan_pub;
 }
 
 
 
+void MapFusion::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
+{
+	//merged_ranges = boost::make_shared<sensor_msgs::LaserScan>();  
+	//scan is a pointer to  object sensor messege
+	size_lidar = scan->ranges.size(); //361 data for lidar 0-360
+	total_size += size_lidar;
+	//ROS_INFO("[lidar: %d]", size_lidar);
 
+//	merged_Laser.header = scan->header;
+//	merged_ranges->range_min = scan->range_min;
+//	merged_ranges->range_max = scan->range_max;
+//	merged_ranges->angle_increment = scan->angle_increment;
+//	merged_ranges->time_increment = scan->time_increment;
+//	merged_ranges->scan_time = scan->scan_time;
+//	merged_ranges->header.frame_id = "merged_ranges";
+//	merged_ranges->angle_min = scan-> angle_min;
+//	merged_ranges-> angle_max = scan-> angle_max;
+	
+	merged_Laser.header = scan->header;
+	merged_Laser.range_min = scan->range_min;
+	merged_Laser.range_max = scan->range_max;
+	merged_Laser.angle_increment = scan->angle_increment;
+	merged_Laser.time_increment = scan->time_increment;
+	merged_Laser.scan_time = scan->scan_time;
+	merged_Laser.header.frame_id = "merged_ranges";
+	merged_Laser.angle_min = scan-> angle_min;
+	merged_Laser. angle_max = scan-> angle_max;
+	/*TODO: Use vector for dynamic array in c++ or use resize() array*/
+	merged_Laser.ranges = scan-> ranges; 
+
+	
+}
+
+void MapFusion::scanCallback2(const sensor_msgs::LaserScan::ConstPtr& ts_scan)
+{
+	  r = 0;
+	  size_ts = ts_scan -> ranges.size();
+	  total_size += size_ts;
+	  //merged_ranges = boost::make_shared<sensor_msgs::LaserScan>();  
+	  ROS_INFO("[ts: %d]", size_ts);
+	  r+= size_ts;
+	  merged_Laser.ranges.resize(total_size);
+	  memcpy(&merged_Laser.ranges[size_lidar], &ts_scan->ranges[r], size_ts*sizeof(float)); 
+	  
+}
+
+void MapFusion::mergelaser()
+{
+	 ROS_INFO("[lidar:%d ts: %d total: %d]", this->size_lidar,size_ts,total_size);
+	 scan_pub.publish(merged_Laser);
+	 total_size = 0;
+}
 int main(int argc, char **argv)
-{
-  MapFusion MapFusion;
-/* initialize the node with mapmerge_listener name*/
-  ros::Rate loop_rate(1.0);
-  while (ros::ok()) {
-    MapFusion.publishingScan();
-    ros::spinOnce();
-    loop_rate.sleep();
-  }
+{  /**
+	   * The ros::init() function needs to see argc and argv so that it can perform
+	   * any ROS arguments and name remapping that were provided at the command line.
+	   * For programmatic remappings you can use a different version of init() which takes
+	   * remappings directly, but for most command-line programs, passing argc and argv is
+	   * the easiest way to do it.  The third argument to init() is the name of the node.
+	   *
+	   * You must call one of the versions of ros::init() before using any other
+	   * part of the ROS system.
+	   */
 
+	  ros::init(argc, argv, "mapFusion");
 
-  /**
-   * ros::spin() will enter a loop, pumping callbacks.  With this version, all
-   * callbacks will be called from within this thread (the main one).  ros::spin()
-   * will exit when Ctrl-C is pressed, or the node is shutdown by the master.
-   */
-
-  return 0;
+	  MapFusion mf_object;
+	  
+	  ros::Rate r(10); // 10 hz
+	  while (ros::ok())
+	  {	 
+		    ros::spinOnce(); //execute all the callbacks
+		    mf_object.mergelaser();
+		    r.sleep();
+	  }
+	
+	  
+	  return 0;
 }
