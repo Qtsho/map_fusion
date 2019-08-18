@@ -1,5 +1,8 @@
 #include "mapfusion_t/mapfusion_t_node.h"
 
+//TODO: use tf transform will only transform the ts_scan after this node merge tgogether, therefore, we  need to transform before merge together. (try to run this node 
+//after the launch file)(launch file will start everything parralelly)
+
 MapFusion::MapFusion ()
 {
 	  sub = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1,
@@ -29,17 +32,9 @@ void MapFusion::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 
 	//ROS_INFO("[lidar: %d]", size_lidar);
 
-//	merged_Laser.header = scan->header;
-//	merged_ranges->range_min = scan->range_min;
-//	merged_ranges->range_max = scan->range_max;
-//	merged_ranges->angle_increment = scan->angle_increment;
-//	merged_ranges->time_increment = scan->time_increment;
-//	merged_ranges->scan_time = scan->scan_time;
-//	merged_ranges->header.frame_id = "merged_ranges";
-//	merged_ranges->angle_min = scan-> angle_min;
-//	merged_ranges-> angle_max = scan-> angle_max;
 	  
-	size_lidar = scan->ranges.size(); //361 data for lidar 0-360
+	size_lidar = scan->ranges.size(); //361 data for lidar 0-360 = 
+	// (*scan).size() : dereferance the pointer
 	total_size += size_lidar;
 	merged_Laser.header = scan->header;
 	merged_Laser.range_min = scan->range_min;
@@ -59,16 +54,17 @@ void MapFusion::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
  *Callback function for Ultrasound messages
  *  
  */
+// TODO: Inspect the marker message to see if it can use to directly merge to 
+//laser message ( creat array, resize array, copy array (memcpy))
 void MapFusion::scanCallback2(const sensor_msgs::LaserScan::ConstPtr& ts_scan)
-{
-	  r = 0;
+{	  r = 0;
 	  size_ts = ts_scan -> ranges.size();
 	  total_size += size_ts;
 	  //merged_ranges = boost::make_shared<sensor_msgs::LaserScan>();  
 	  ROS_INFO("[ts: %d]", size_ts);
 	  r+= size_ts;
 	  merged_Laser.ranges.resize(total_size);
-	  memcpy(&merged_Laser.ranges[size_lidar], &ts_scan->ranges[r], size_ts*sizeof(float)); 
+	  memcpy(&merged_Laser.ranges[size_lidar], &(ts_scan->ranges[0]), size_ts*sizeof(float)); // copy the pointer of tsscan to the last scan array
 	  
 }
 /**
@@ -97,7 +93,7 @@ int main(int argc, char **argv)
 
 	  MapFusion mf_object; // create fushion object
 	  
-	  ros::Rate r(10); // 10 hz
+	  ros::Rate r(5); // 10 hz // Problem: skip ts_scan and publish only lidar scan
 	  while (ros::ok())
 	  {	 
 		    ros::spinOnce(); //execute all the callbacks
