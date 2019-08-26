@@ -59,12 +59,22 @@ void MapFusion::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 void MapFusion::scanCallback2(const sensor_msgs::LaserScan::ConstPtr& ts_scan)
 {	  r = 0;
 	  size_ts = ts_scan -> ranges.size();
+	  for (int i = 0; i<= size_ts;i++)
+	  {	    
+		    if (ts_scan->ranges[i] < 100)
+		    {
+			      merged_Laser.ranges[i] = ts_scan->ranges[i];
+		    }	      
+		    
+	  }
+	  
 	  total_size += size_ts;
 	  //merged_ranges = boost::make_shared<sensor_msgs::LaserScan>();  
 	  ROS_INFO("[ts: %d]", size_ts);
-	  r+= size_ts;
-	  merged_Laser.ranges.resize(total_size);
-	  memcpy(&merged_Laser.ranges[size_lidar], &(ts_scan->ranges[0]), size_ts*sizeof(float)); // copy the pointer of tsscan to the last scan array
+	  
+	  //r+= size_ts;
+	  //merged_Laser.ranges.resize(total_size);
+	  //memcpy(&merged_Laser.ranges[size_lidar], &(ts_scan->ranges[0]), size_ts*sizeof(float)); // copy the pointer of tsscan to the last scan array
 	  
 }
 /**
