@@ -17,6 +17,8 @@ class Laser2Pcl{
 
 
 };
+
+
 //Constructor of my filter
 Laser2Pcl::Laser2Pcl(){
         scan_sub_ = node_.subscribe<sensor_msgs::LaserScan> ("/scan", 100, &Laser2Pcl::scanCallback, this); //subcribe to a scan and go to call back
@@ -24,11 +26,13 @@ Laser2Pcl::Laser2Pcl(){
         tfListener_.setExtrapolationLimit(ros::Duration(0.1));                                              // setup tf
 }     
 
+
 void Laser2Pcl::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan){
     sensor_msgs::PointCloud2 cloud;                                                                         // create a pcl2 msg
     projector_.transformLaserScanToPointCloud("laser", *scan, cloud, tfListener_);                      //transform to pcl using laser geometry class, 'base_link' fix where see all the scan in
     point_cloud_publisher_.publish(cloud);                                                                  //publish pcl
 }
+
 
 
 int main(int argc, char** argv)

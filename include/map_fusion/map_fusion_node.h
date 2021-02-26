@@ -28,13 +28,9 @@ public:
  
 
   ros::Publisher scan_pub_;
-  //tf::message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_(n_, "scan", 10);
-  //tf::message_filters::Subscriber<sensor_msgs::PointCloud2> us_sub(n_, "ts_alpha/pointcloud", 1);
-  //pcl::concatenatePointCloud mergepcl;
+
 
   LaserScanToPointCloud(ros::NodeHandle n) : 
-
-
     n_(n),
     laser_sub_(n_, "scan", 10),
     laser_notifier_(laser_sub_,listener_, "base_link", 10)
